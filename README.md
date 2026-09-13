@@ -241,16 +241,3 @@ These capabilities are schema-supported or architecture-ready where practical, b
 ## Licence
 
 No licence has been selected. Do not assume redistribution rights until one is added.
-
-## Publish to GitHub
-
-The project directory is ready to be uploaded, but this local checkout has no GitHub remote configured. Create an empty repository on GitHub first (do not add a second README, licence or `.gitignore`), then run from this directory:
-
-```bash
-git add .
-git commit -m "Build Nexus academia-industry portal"
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
-```
-
-Review `git status` and `git diff --cached` before committing. `.env` and `.env.local` are ignored; only `.env.example` is intended to be published. GitHub authentication may prompt for a personal access token or use an already configured SSH key.
