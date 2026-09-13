@@ -44,3 +44,6 @@ next-env.d.ts
 # browser test artifacts
 /test-results/
 /playwright-report/
+
+# misc
+AGENTS.md
