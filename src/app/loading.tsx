@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="main" style={{ marginLeft: 0, width: "100%" }}><div className="content" aria-busy="true" aria-label="Loading workspace"><div className="panel panel-pad"><div className="progress"><span style={{ width: "38%" }} /></div><p style={{ color: "var(--muted)", marginTop: 16 }}>Loading your workspace…</p></div></div></main>; }

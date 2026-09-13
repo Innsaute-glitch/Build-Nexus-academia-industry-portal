@@ -1,0 +1,548 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  ACADEMICIAN
+  INDUSTRY
+  INSTITUTION_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum OpportunityType {
+  INTERNSHIP
+  LIVE_PROJECT
+  APPRENTICESHIP
+  ENTRY_LEVEL_JOB
+  FACULTY_INTERNSHIP
+  INDUSTRIAL_TRAINING
+  CONSULTANCY
+  RESEARCH_COLLABORATION
+}
+
+enum OpportunityStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW
+  SELECTED
+  REJECTED
+  WITHDRAWN
+  ACCEPTED
+  COMPLETED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum PortfolioItemType {
+  PROJECT
+  CERTIFICATION
+  INTERNSHIP
+  ACHIEVEMENT
+  PUBLICATION
+  WORKSHOP
+  SKILL
+  RECOMMENDATION
+}
+
+enum SkillEvidenceSource {
+  SELF_REPORTED
+  ASSESSMENT
+  VERIFIED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  LIKERT
+  SELF_REPORT
+}
+
+enum DocumentAccess {
+  PRIVATE
+  APPLICATION
+  INSTITUTION
+  PUBLIC
+}
+
+enum ScanStatus {
+  PENDING
+  CLEAN
+  REJECTED
+}
+
+model Institution {
+  id          String       @id @default(uuid()) @db.Uuid
+  publicId    String       @unique @default(cuid())
+  name        String
+  code        String       @unique
+  city        String
+  departments Department[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  archivedAt  DateTime?
+}
+
+model Department {
+  id            String      @id @default(uuid()) @db.Uuid
+  publicId      String      @unique @default(cuid())
+  name          String
+  institutionId String      @db.Uuid
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  programmes    Programme[]
+  createdAt     DateTime    @default(now())
+
+  @@unique([institutionId, name])
+  @@index([institutionId])
+}
+
+model Programme {
+  id           String     @id @default(uuid()) @db.Uuid
+  publicId     String     @unique @default(cuid())
+  name         String
+  level        String
+  departmentId String     @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  createdAt    DateTime   @default(now())
+
+  @@unique([departmentId, name])
+}
+
+model Organisation {
+  id            String        @id @default(uuid()) @db.Uuid
+  publicId      String        @unique @default(cuid())
+  name          String
+  sector        String
+  city          String
+  verifiedAt    DateTime?
+  users         User[]
+  opportunities Opportunity[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  archivedAt    DateTime?
+}
+
+model User {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  publicId             String                     @unique @default(cuid())
+  email                String                     @unique
+  passwordHash         String
+  name                 String
+  role                 Role
+  active               Boolean                    @default(true)
+  emailVerifiedAt      DateTime?
+  institutionId        String?                    @db.Uuid
+  organisationId       String?                    @db.Uuid
+  institution          Institution?               @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  organisation         Organisation?              @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  headline             String?
+  location             String?
+  careerInterests      String[]
+  desiredRoles         String[]
+  sessions             Session[]
+  applications         Application[]
+  attempts             AssessmentAttempt[]
+  portfolioItems       PortfolioItem[]
+  documents            Document[]
+  opportunities        Opportunity[]              @relation("OpportunityAuthor")
+  statusChanges        ApplicationStatusHistory[] @relation("StatusActor")
+  auditEvents          AuditLog[]                 @relation("AuditActor")
+  notifications        Notification[]
+  placements           InternshipPlacement[]      @relation("PlacementParticipant")
+  mentoredPlacements   InternshipPlacement[]      @relation("PlacementMentor")
+  feedbackGiven        Feedback[]                 @relation("FeedbackAuthor")
+  verificationRequests VerificationRequest[]      @relation("VerificationRequester")
+  verificationReviews  VerificationRequest[]      @relation("VerificationReviewer")
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  deletedAt            DateTime?
+  savedOpportunities   SavedOpportunity[]
+  skillEvidence        UserSkill[]
+
+  @@index([institutionId, role])
+  @@index([organisationId, role])
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  tokenHash  String   @unique
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  userAgent  String?
+  ipHash     String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthAttempt {
+  id        String   @id @default(uuid()) @db.Uuid
+  keyHash   String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([keyHash, createdAt])
+}
+
+model SkillCategory {
+  id       String  @id @default(uuid()) @db.Uuid
+  publicId String  @unique @default(cuid())
+  name     String  @unique
+  skills   Skill[]
+}
+
+model Skill {
+  id           String             @id @default(uuid()) @db.Uuid
+  publicId     String             @unique @default(cuid())
+  name         String             @unique
+  categoryId   String             @db.Uuid
+  category     SkillCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  requirements OpportunitySkill[]
+  profiles     UserSkill[]
+
+  @@index([categoryId])
+}
+
+model UserSkill {
+  userId     String              @db.Uuid
+  skillId    String              @db.Uuid
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill      Skill               @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  level      Int
+  source     SkillEvidenceSource
+  verifiedAt DateTime?
+  updatedAt  DateTime            @updatedAt
+
+  @@id([userId, skillId, source])
+  @@index([skillId, source])
+}
+
+model Assessment {
+  id          String               @id @default(uuid()) @db.Uuid
+  publicId    String               @unique @default(cuid())
+  title       String
+  description String
+  version     Int
+  active      Boolean              @default(true)
+  questions   AssessmentQuestion[]
+  attempts    AssessmentAttempt[]
+  createdAt   DateTime             @default(now())
+
+  @@unique([title, version])
+}
+
+model AssessmentQuestion {
+  id            String             @id @default(uuid()) @db.Uuid
+  publicId      String             @unique @default(cuid())
+  assessmentId  String             @db.Uuid
+  assessment    Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  prompt        String
+  type          QuestionType
+  category      String
+  options       Json
+  correctAnswer String?
+  weight        Int                @default(1)
+  position      Int
+  answers       AssessmentAnswer[]
+
+  @@unique([assessmentId, position])
+}
+
+model AssessmentAttempt {
+  id                String             @id @default(uuid()) @db.Uuid
+  publicId          String             @unique @default(cuid())
+  assessmentId      String             @db.Uuid
+  assessment        Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  userId            String             @db.Uuid
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  assessmentVersion Int
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+  overallScore      Int?
+  categoryScores    Json?
+  strengths         String[]
+  gaps              String[]
+  answers           AssessmentAnswer[]
+
+  @@index([userId, completedAt])
+}
+
+model AssessmentAnswer {
+  id         String             @id @default(uuid()) @db.Uuid
+  attemptId  String             @db.Uuid
+  attempt    AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String             @db.Uuid
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  answer     String
+  score      Int
+
+  @@unique([attemptId, questionId])
+}
+
+model Opportunity {
+  id                  String                @id @default(uuid()) @db.Uuid
+  publicId            String                @unique @default(cuid())
+  organisationId      String                @db.Uuid
+  organisation        Organisation          @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  createdById         String                @db.Uuid
+  createdBy           User                  @relation("OpportunityAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  title               String
+  description         String
+  type                OpportunityType
+  status              OpportunityStatus     @default(DRAFT)
+  qualifications      String
+  minExperienceMonths Int                   @default(0)
+  location            String
+  workMode            WorkMode
+  startDate           DateTime?
+  endDate             DateTime?
+  compensation        String?
+  openings            Int
+  applicationDeadline DateTime
+  version             Int                   @default(1)
+  skills              OpportunitySkill[]
+  applications        Application[]
+  placements          InternshipPlacement[]
+  savedBy             SavedOpportunity[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  archivedAt          DateTime?
+
+  @@index([status, applicationDeadline])
+  @@index([organisationId, status])
+  @@index([type, workMode])
+}
+
+model OpportunitySkill {
+  opportunityId String      @db.Uuid
+  skillId       String      @db.Uuid
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  skill         Skill       @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  required      Boolean     @default(true)
+  minimumLevel  Int         @default(1)
+
+  @@id([opportunityId, skillId])
+  @@index([skillId])
+}
+
+model SavedOpportunity {
+  userId        String      @db.Uuid
+  opportunityId String      @db.Uuid
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@id([userId, opportunityId])
+}
+
+model Application {
+  id            String                     @id @default(uuid()) @db.Uuid
+  publicId      String                     @unique @default(cuid())
+  opportunityId String                     @db.Uuid
+  opportunity   Opportunity                @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  applicantId   String                     @db.Uuid
+  applicant     User                       @relation(fields: [applicantId], references: [id], onDelete: Restrict)
+  status        ApplicationStatus          @default(SUBMITTED)
+  coverNote     String
+  version       Int                        @default(1)
+  submittedAt   DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  withdrawnAt   DateTime?
+  history       ApplicationStatusHistory[]
+  placement     InternshipPlacement?
+
+  @@unique([opportunityId, applicantId])
+  @@index([applicantId, status])
+  @@index([opportunityId, status])
+}
+
+model ApplicationStatusHistory {
+  id            String             @id @default(uuid()) @db.Uuid
+  applicationId String             @db.Uuid
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus
+  actorId       String             @db.Uuid
+  actor         User               @relation("StatusActor", fields: [actorId], references: [id], onDelete: Restrict)
+  message       String?
+  createdAt     DateTime           @default(now())
+
+  @@index([applicationId, createdAt])
+}
+
+model LearningProgramme {
+  id          String   @id @default(uuid()) @db.Uuid
+  publicId    String   @unique @default(cuid())
+  title       String
+  provider    String
+  category    String
+  description String
+  mode        WorkMode
+  duration    String
+  eligibility String
+  url         String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model PortfolioItem {
+  id                 String               @id @default(uuid()) @db.Uuid
+  publicId           String               @unique @default(cuid())
+  ownerId            String               @db.Uuid
+  owner              User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type               PortfolioItemType
+  title              String
+  issuer             String?
+  description        String
+  occurredAt         DateTime?
+  externalUrl        String?
+  visibilityPublic   Boolean              @default(false)
+  verificationStatus VerificationStatus   @default(UNVERIFIED)
+  verification       VerificationRequest?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deletedAt          DateTime?
+
+  @@index([ownerId, type])
+}
+
+model VerificationRequest {
+  id              String             @id @default(uuid()) @db.Uuid
+  publicId        String             @unique @default(cuid())
+  portfolioItemId String             @unique @db.Uuid
+  portfolioItem   PortfolioItem      @relation(fields: [portfolioItemId], references: [id], onDelete: Cascade)
+  requesterId     String             @db.Uuid
+  requester       User               @relation("VerificationRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  reviewerId      String?            @db.Uuid
+  reviewer        User?              @relation("VerificationReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  status          VerificationStatus @default(PENDING)
+  note            String?
+  requestedAt     DateTime           @default(now())
+  reviewedAt      DateTime?
+}
+
+model Document {
+  id           String         @id @default(uuid()) @db.Uuid
+  publicId     String         @unique @default(cuid())
+  ownerId      String         @db.Uuid
+  owner        User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  originalName String
+  storageKey   String         @unique
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  scanStatus   ScanStatus     @default(PENDING)
+  access       DocumentAccess @default(PRIVATE)
+  createdAt    DateTime       @default(now())
+  deletedAt    DateTime?
+
+  @@index([ownerId, access])
+}
+
+model InternshipPlacement {
+  id                String      @id @default(uuid()) @db.Uuid
+  publicId          String      @unique @default(cuid())
+  applicationId     String      @unique @db.Uuid
+  application       Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  opportunityId     String      @db.Uuid
+  opportunity       Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  participantId     String      @db.Uuid
+  participant       User        @relation("PlacementParticipant", fields: [participantId], references: [id], onDelete: Restrict)
+  mentorId          String?     @db.Uuid
+  mentor            User?       @relation("PlacementMentor", fields: [mentorId], references: [id], onDelete: Restrict)
+  startedAt         DateTime?
+  completedAt       DateTime?
+  attendancePercent Int?
+  finalEvaluation   String?
+  milestones        Milestone[]
+  feedback          Feedback[]
+  createdAt         DateTime    @default(now())
+
+  @@index([participantId])
+  @@index([mentorId])
+}
+
+model Milestone {
+  id           String              @id @default(uuid()) @db.Uuid
+  publicId     String              @unique @default(cuid())
+  placementId  String              @db.Uuid
+  placement    InternshipPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  title        String
+  dueAt        DateTime
+  completedAt  DateTime?
+  progressNote String?
+  createdAt    DateTime            @default(now())
+}
+
+model Feedback {
+  id                   String              @id @default(uuid()) @db.Uuid
+  publicId             String              @unique @default(cuid())
+  placementId          String              @db.Uuid
+  placement            InternshipPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  authorId             String              @db.Uuid
+  author               User                @relation("FeedbackAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  rating               Int
+  body                 String
+  privateToParticipant Boolean             @default(false)
+  createdAt            DateTime            @default(now())
+
+  @@index([placementId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  publicId  String    @unique @default(cuid())
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  publicId       String   @unique @default(cuid())
+  actorId        String?  @db.Uuid
+  actor          User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action         String
+  entityType     String
+  entityPublicId String?
+  outcome        String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}

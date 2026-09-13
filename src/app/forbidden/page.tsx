@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function ForbiddenPage() { return <main className="auth-page" style={{ display: "block", padding: 40 }}><div className="panel panel-pad" style={{ maxWidth: 560, margin: "15vh auto" }}><p className="eyebrow">Access boundary</p><h1>That area is not part of your workspace.</h1><p style={{ color: "var(--muted)" }}>Nexus checks role and tenant permissions on the server for every protected route.</p><Link href="/dashboard" className="btn btn-primary">Back to overview</Link></div></main>; }
