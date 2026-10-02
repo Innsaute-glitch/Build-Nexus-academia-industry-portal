@@ -1,5 +1,7 @@
 # Nexus
 
+(Built as a learning project to explore agentic workflows)
+
 **Portal for Academia-Industry Collaboration for Skill Mapping, Internships and Placement**
 
 Nexus is a full-stack workspace connecting students, academicians, educational institutions and industry organisations. It focuses on explainable skill signals, scoped opportunity workflows, auditable applications and verified portfolio evidence.
